@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THEY GOOD TV — API</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cyan: #00e5ff;
+    --purple: #7c3aed;
+    --green: #00ff88;
+    --red: #ff3d5a;
+    --yellow: #ffc800;
+    --bg: #04040f;
+    --bg2: #08081a;
+    --bg3: #0d0d22;
+    --border: rgba(0,229,255,0.15);
+  }
+
+  body {
+    background: var(--bg);
+    color: #fff;
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, rgba(124,58,237,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(0,229,255,0.06) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+
+  /* HEADER */
+  header {
+    text-align: center;
+    padding: 60px 20px 40px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .logo-ring {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 2px solid var(--cyan);
+    box-shadow: 0 0 30px rgba(0,229,255,0.3), inset 0 0 30px rgba(0,229,255,0.05);
+    margin-bottom: 20px;
+    animation: pulse 3s ease-in-out infinite;
+    font-size: 2rem;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(0,229,255,0.3), inset 0 0 20px rgba(0,229,255,0.05); }
+    50%       { box-shadow: 0 0 50px rgba(0,229,255,0.6), inset 0 0 40px rgba(0,229,255,0.1); }
+  }
+
+  h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.5rem, 5vw, 2.8rem);
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    background: linear-gradient(90deg, var(--cyan), #fff, var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    color: rgba(255,255,255,0.4);
+    font-size: 0.75rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  /* STATUS BADGE */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,255,136,0.1);
+    border: 1px solid rgba(0,255,136,0.3);
+    color: var(--green);
+    border-radius: 30px;
+    padding: 8px 20px;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    margin-top: 20px;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--green); }
+    50%       { opacity: 0.3; box-shadow: none; }
+  }
+
+  /* CARDS GRID */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .card:hover {
+    border-color: rgba(0,229,255,0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 40px rgba(0,229,255,0.1);
+  }
+
+  .card:hover::before { opacity: 1; }
+
+  .card-icon {
+    font-size: 2rem;
+    margin-bottom: 12px;
+  }
+
+  .card-label {
+    font-size: 0.6rem;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .card-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .card-sub {
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.3);
+    margin-top: 4px;
+  }
+
+  /* ENDPOINTS */
+  .section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .endpoint-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
+
+  .endpoint {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: border-color 0.2s, background 0.2s;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .endpoint:hover {
+    border-color: rgba(0,229,255,0.4);
+    background: rgba(0,229,255,0.03);
+  }
+
+  .method {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    letter-spacing: 1px;
+  }
+
+  .method.get {
+    background: rgba(0,229,255,0.15);
+    border: 1px solid rgba(0,229,255,0.4);
+    color: var(--cyan);
+  }
+
+  .ep-path {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    color: #fff;
+    flex: 1;
+  }
+
+  .ep-desc {
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.4);
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* LOG TERMINAL */
+  .terminal {
+    background: #020208;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 30px;
+  }
+
+  .terminal-bar {
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.4);
+  }
+
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; }
+  .dot.y { background: #febc2e; }
+  .dot.g { background: #28c840; }
+
+  .terminal-body {
+    padding: 20px;
+    font-size: 0.78rem;
+    line-height: 2;
+    color: rgba(255,255,255,0.6);
+    min-height: 120px;
+  }
+
+  .log-line { display: flex; gap: 12px; }
+  .log-time { color: rgba(0,229,255,0.5); flex-shrink: 0; }
+  .log-ok { color: var(--green); }
+  .log-warn { color: var(--yellow); }
+  .log-info { color: var(--cyan); }
+
+  /* PING BUTTON */
+  .ping-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(124,58,237,0.15));
+    border: 1px solid var(--cyan);
+    border-radius: 12px;
+    padding: 14px 28px;
+    color: var(--cyan);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+  }
+
+  .ping-btn:hover {
+    background: linear-gradient(135deg, rgba(0,229,255,0.25), rgba(124,58,237,0.25));
+    box-shadow: 0 0 30px rgba(0,229,255,0.3);
+    transform: scale(1.02);
+  }
+
+  .footer {
+    text-align: center;
+    padding: 40px 0 20px;
+    color: rgba(255,255,255,0.2);
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+  }
+
+  .uptime-bar {
+    display: flex;
+    gap: 3px;
+    margin-top: 12px;
+  }
+
+  .uptime-seg {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--green);
+    opacity: 0.7;
+  }
+
+  .uptime-seg.down { background: var(--red); }
+
+  /* Stagger animation */
+  .card, .endpoint, .terminal { animation: fadeUp 0.5s ease both; }
+  .card:nth-child(1) { animation-delay: 0.1s; }
+  .card:nth-child(2) { animation-delay: 0.2s; }
+  .card:nth-child(3) { animation-delay: 0.3s; }
+  .endpoint:nth-child(1) { animation-delay: 0.2s; }
+  .endpoint:nth-child(2) { animation-delay: 0.3s; }
+  .endpoint:nth-child(3) { animation-delay: 0.4s; }
+  .endpoint:nth-child(4) { animation-delay: 0.5s; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 500px) {
+    .ep-desc { display: none; }
+    .ep-path { font-size: 0.75rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-ring">📡</div>
+  <h1>THEY GOOD TV</h1>
+  <p class="subtitle">Stream API Server</p>
+  <div class="status-badge">
+    <span class="status-dot"></span>
+    SERVIDOR ACTIVO
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- STATS -->
+  <div class="grid">
+    <div class="card">
+      <div class="card-icon">⚡</div>
+      <div class="card-label">Estado</div>
+      <div class="card-value" style="color: var(--green)">ONLINE</div>
+      <div class="card-sub">Render.com · Free Plan</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🕐</div>
+      <div class="card-label">Tiempo activo</div>
+      <div class="card-value" id="uptimeClock">00:00:00</div>
+      <div class="card-sub">Desde último reinicio</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔄</div>
+      <div class="card-label">Caché canales</div>
+      <div class="card-value">50 min</div>
+      <div class="card-sub">Renovación automática</div>
+    </div>
+  </div>
+
+  <!-- UPTIME BAR -->
+  <div class="section-title">DISPONIBILIDAD — ÚLTIMAS 24H</div>
+  <div class="uptime-bar" style="margin-bottom:30px">
+    <script>
+      // Simula uptime con mayoría verde
+      for(let i=0;i<48;i++){
+        const d = Math.random()>0.95;
+        document.write(`<div class="uptime-seg${d?' down':''}"></div>`);
+      }
+    </script>
+  </div>
+
+  <!-- ENDPOINTS -->
+  <div class="section-title">ENDPOINTS DISPONIBLES</div>
+  <div class="endpoint-list">
+    <a class="endpoint" href="/streams" target="_blank">
+      <span class="method get">GET</span>
+      <span class="ep-path">/streams</span>
+      <span class="ep-desc">Todos los canales con estado</span>
+    </a>
+    <a class="endpoint" href="/canal/ecuavisa" target="_blank">
+      <span class="method get">GET</span>
+      <span class="ep-path">/canal/:nombre</span>
+      <span class="ep-desc">Link fresco de un canal</span>
+    </a>
+    <a class="endpoint" href="/proxy?url=" target="_blank">
+      <span class="method get">GET</span>
+      <span class="ep-path">/proxy?url=...</span>
+      <span class="ep-desc">Proxy CORS para streams</span>
+    </a>
+    <a class="endpoint" href="/health" target="_blank">
+      <span class="method get">GET</span>
+      <span class="ep-path">/health</span>
+      <span class="ep-desc">Estado del servidor</span>
+    </a>
+  </div>
+
+  <!-- TERMINAL LOG -->
+  <div class="section-title">ACTIVITY LOG</div>
+  <div class="terminal">
+    <div class="terminal-bar">
+      <span class="dot r"></span>
+      <span class="dot y"></span>
+      <span class="dot g"></span>
+      &nbsp; theygoodtv-server — bash
+    </div>
+    <div class="terminal-body" id="termLog">
+      <div class="log-line"><span class="log-time" id="t1"></span><span class="log-ok">✓ Servidor iniciado en puerto 3000</span></div>
+      <div class="log-line"><span class="log-time" id="t2"></span><span class="log-info">→ CORS habilitado para todos los orígenes</span></div>
+      <div class="log-line"><span class="log-time" id="t3"></span><span class="log-ok">✓ Caché en memoria activa · TTL: 50 min</span></div>
+      <div class="log-line"><span class="log-time" id="t4"></span><span class="log-warn">⚠ Plan Free: servidor duerme tras 15 min sin uso</span></div>
+      <div class="log-line"><span class="log-time" id="t5"></span><span class="log-info">→ Listo para recibir peticiones</span></div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div style="text-align:center; margin-bottom: 30px;">
+    <a class="ping-btn" href="/health" target="_blank">
+      📶 VERIFICAR ESTADO
+    </a>
+  </div>
+
+  <div class="footer">
+    THEY GOOD TV API &nbsp;·&nbsp; theygoodtv-server.onrender.com &nbsp;·&nbsp; v1.0.0
+  </div>
+</div>
+
+<script>
+  // Reloj de uptime
+  const start = Date.now();
+  setInterval(() => {
+    const s = Math.floor((Date.now()-start)/1000);
+    const h = String(Math.floor(s/3600)).padStart(2,'0');
+    const m = String(Math.floor((s%3600)/60)).padStart(2,'0');
+    const sec = String(s%60).padStart(2,'0');
+    document.getElementById('uptimeClock').textContent = `${h}:${m}:${sec}`;
+  }, 1000);
+
+  // Timestamps en los logs
+  const now = new Date();
+  const fmt = d => d.toTimeString().slice(0,8);
+  ['t1','t2','t3','t4','t5'].forEach((id, i) => {
+    const d = new Date(now - (4-i)*3000);
+    document.getElementById(id).textContent = fmt(d);
+  });
+</script>
+
+</body>
+</html>

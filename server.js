@@ -84,9 +84,11 @@ async function extraerEmbed(url) {
     for (const p of dmPatterns) {
       const m = html.match(p);
       if (m && m[1] && m[1].length >= 5) {
+        // Dailymotion bloquea embed directo en sitios externos.
+        // geo.dailymotion.com/player.html sí permite embeds externos.
         return {
           tipo: "iframe",
-          embed: `https://www.dailymotion.com/embed/video/${m[1]}`,
+          embed: `https://geo.dailymotion.com/player.html?video=${m[1]}&autoplay=1&mute=0`,
           raw: m[1],
           fuente: "dailymotion"
         };
@@ -222,8 +224,16 @@ app.get("/live/:canal/player", async (req, res) => {
     setCache("live_" + key, data);
   }
 
-  // Devolver HTML con el player embebido
+  // Headers para que Dailymotion no bloquee
+  res.setHeader("X-Frame-Options", "ALLOWALL");
+  res.setHeader("Content-Security-Policy", "frame-ancestors *");
+
   if (data.tipo === "iframe") {
+    const esDailymotion = data.fuente === "dailymotion" || (data.embed && data.embed.includes("dailymotion"));
+    const iframeAttrs = esDailymotion
+      ? `allowfullscreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture"`
+      : `allowfullscreen allow="autoplay; encrypted-media; fullscreen" sandbox="allow-scripts allow-same-origin allow-forms allow-presentation" referrerpolicy="no-referrer"`;
+
     res.send(`<!DOCTYPE html>
 <html>
 <head>
@@ -231,14 +241,12 @@ app.get("/live/:canal/player", async (req, res) => {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:#000; overflow:hidden; }
-iframe { width:100vw; height:100vh; border:none; }
+html, body { width:100%; height:100%; background:#000; overflow:hidden; }
+iframe { position:fixed; top:0; left:0; width:100%; height:100%; border:none; }
 </style>
 </head>
 <body>
-<iframe src="${data.embed}" allowfullscreen allow="autoplay; encrypted-media; fullscreen"
-  sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-  referrerpolicy="no-referrer"></iframe>
+<iframe src="${data.embed}" ${iframeAttrs}></iframe>
 </body>
 </html>`);
   } else if (data.tipo === "m3u8") {

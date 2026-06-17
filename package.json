@@ -1,6 +1,6 @@
 {
   "name": "theygoodtv-server",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "THEY GOOD TV Stream Server with Puppeteer",
   "main": "server.js",
   "scripts": {

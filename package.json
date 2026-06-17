@@ -1,15 +1,17 @@
 {
   "name": "theygoodtv-server",
-  "version": "1.0.0",
-  "description": "Servidor de streams para THEY GOOD TV",
+  "version": "3.0.0",
+  "description": "THEY GOOD TV Stream Server with Puppeteer",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
     "cors": "^2.8.5",
-    "node-fetch": "^2.7.0",
-    "cheerio": "^1.0.0-rc.12"
+    "express": "^4.18.2",
+    "puppeteer": "^21.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

@@ -50,8 +50,36 @@ let CANALES = {
    LANZAR PUPPETEER
 ========================= */
 async function getBrowser() {
+  // Rutas posibles de Chrome en Render.com y otros entornos
+  const fs = require("fs");
+  const posiblesPaths = [
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    "/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome",
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/chromium",
+  ].filter(Boolean);
+
+  let executablePath = undefined;
+  for (const p of posiblesPaths) {
+    // Soporte para glob simple (asterisco)
+    if (p.includes("*")) {
+      const { execSync } = require("child_process");
+      try {
+        const result = execSync(`ls ${p} 2>/dev/null | head -1`).toString().trim();
+        if (result) { executablePath = result; break; }
+      } catch {}
+    } else if (fs.existsSync(p)) {
+      executablePath = p;
+      break;
+    }
+  }
+
+  console.log(`[browser] Chrome path: ${executablePath || "puppeteer default"}`);
+
   return puppeteer.launch({
     headless: "new",
+    executablePath,
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -61,10 +89,9 @@ async function getBrowser() {
       "--no-zygote",
       "--single-process",
       "--disable-extensions",
-      "--disable-web-security",          // permite cargar recursos cross-origin
+      "--disable-web-security",
       "--allow-running-insecure-content",
     ],
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
   });
 }
 

@@ -148,6 +148,16 @@ let CANALES = {
       fuente: "youtube"
     }
   },
+
+  "tvc": {
+    nombre: "tvcecu",
+    url: "https://www.tvc.com.ec/envivo/",
+    embedFijo: {
+      tipo: "m3u8",
+      embed: "https://d2b5h5wyivfnfl.cloudfront.net/live/19e86940-42cc-485e-80f4-89ae27c69f1b/medialist_4276517416086298479_hls.m3u8",
+      fuente: "manual"
+    }
+  },
 };
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";

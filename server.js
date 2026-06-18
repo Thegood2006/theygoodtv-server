@@ -1,6 +1,6 @@
 /**
- * THEY GOOD TV — Servidor v6.0
- * Streams reales verificados — Sin Puppeteer
+ * THEY GOOD TV â Servidor v6.0
+ * Streams reales verificados â Sin Puppeteer
  * Compatible con Node.js 18+ y Render.com
  */
 
@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-/* ── CACHÉ 50 minutos ── */
+/* ââ CACHÃ 50 minutos ââ */
 const cache = {};
 function getCached(k) {
   const i = cache[k];
@@ -23,18 +23,18 @@ function getCached(k) {
 }
 function setCache(k, d) { cache[k] = { d, t: Date.now() }; }
 
-/* ═══════════════════════════════════════════════════════
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââ
    MAPA DE CANALES CON STREAMS REALES VERIFICADOS
    embedFijo = link directo que funciona sin scraping
-   url       = página oficial (fallback / info)
-   ═══════════════════════════════════════════════════════ */
+   url       = pÃ¡gina oficial (fallback / info)
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 let CANALES = {
 
-  /* ── ECUADOR ── */
+  /* ââ ECUADOR ââ */
   "tc": {
-    nombre: "TC Televisión",
+    nombre: "TC TelevisiÃ³n",
     url: "https://tctelevision.com/envivo/",
-    // TC usa Dailymotion — el extractor lo captura solo
+    // TC usa Dailymotion â el extractor lo captura solo
   },
   "ecuavisa": {
     nombre: "Ecuavisa",
@@ -73,7 +73,7 @@ let CANALES = {
     }
   },
   "gama-tv": {
-    nombre: "Gamavisión",
+    nombre: "GamavisiÃ³n",
     url: "https://gamatv.com.ec/en-vivo",
     embedFijo: {
       tipo: "m3u8",
@@ -82,7 +82,7 @@ let CANALES = {
     }
   },
   "ecdf": {
-    nombre: "El Canal del Fútbol",
+    nombre: "El Canal del FÃºtbol",
     url: "https://ecdf.ec",
     embedFijo: {
       tipo: "iframe",
@@ -100,7 +100,7 @@ let CANALES = {
     }
   },
 
-  /* ── COLOMBIA ── */
+  /* ââ COLOMBIA ââ */
   "caracol": {
     nombre: "Noticias Caracol",
     url: "https://www.noticiascaracol.com/senal-en-vivo",
@@ -120,9 +120,9 @@ let CANALES = {
     }
   },
 
-  /* ── INTERNACIONALES ── */
+  /* ââ INTERNACIONALES ââ */
   "cnn-espanol": {
-    nombre: "CNN en Español",
+    nombre: "CNN en EspaÃ±ol",
     url: "https://cnnespanol.cnn.com/video/en-vivo",
     embedFijo: {
       tipo: "iframe",
@@ -152,7 +152,7 @@ let CANALES = {
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-/* ── EXTRACTOR DE EMERGENCIA (para canales sin embedFijo) ── */
+/* ââ EXTRACTOR DE EMERGENCIA (para canales sin embedFijo) ââ */
 async function extraerStream(url) {
   try {
     const res  = await fetch(url, {
@@ -171,7 +171,7 @@ async function extraerStream(url) {
     const geoDM = html.match(/geo\.dailymotion\.com\/player\.html\?video=([a-zA-Z0-9]+)/);
     if (geoDM) return { tipo: "iframe", embed: `https://geo.dailymotion.com/player.html?video=${geoDM[1]}&autoplay=1`, fuente: "dailymotion-geo" };
 
-    // 2. Dailymotion video ID genérico
+    // 2. Dailymotion video ID genÃ©rico
     const dm = html.match(/dailymotion\.com\/(?:embed\/video\/|video\/)([a-zA-Z0-9]{5,12})/);
     if (dm) return { tipo: "iframe", embed: `https://geo.dailymotion.com/player.html?video=${dm[1]}&autoplay=1`, fuente: "dailymotion" };
 
@@ -209,7 +209,7 @@ async function extraerStream(url) {
   }
 }
 
-/* ── TEMPLATES HTML ── */
+/* ââ TEMPLATES HTML ââ */
 function htmlM3U8(data) {
   return `<!DOCTYPE html><html><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -255,16 +255,16 @@ height:100vh;text-align:center;gap:16px}h2{color:#ff3d5a}
 p{color:rgba(255,255,255,.5);font-size:.8rem;max-width:320px;line-height:1.6}
 a{color:#00e1ff;padding:10px 20px;border:1px solid #00e1ff;border-radius:8px;text-decoration:none}</style>
 </head><body>
-<div style="font-size:3rem">📡</div>
+<div style="font-size:3rem">ð¡</div>
 <h2>Stream no disponible</h2>
-<p>${nombre} no pudo ser extraído en este momento. El canal puede estar offline o cambió su reproductor.</p>
-<a href="${urlOriginal}" target="_blank">Ver en sitio oficial →</a>
+<p>${nombre} no pudo ser extraÃ­do en este momento. El canal puede estar offline o cambiÃ³ su reproductor.</p>
+<a href="${urlOriginal}" target="_blank">Ver en sitio oficial â</a>
 </body></html>`;
 }
 
-/* ════════════════════════════════════
+/* ââââââââââââââââââââââââââââââââââââ
    RUTAS
-   ════════════════════════════════════ */
+   ââââââââââââââââââââââââââââââââââââ */
 
 /* Player embebido */
 app.get("/live/:canal/player", async (req, res) => {
@@ -275,25 +275,25 @@ app.get("/live/:canal/player", async (req, res) => {
   res.setHeader("X-Frame-Options", "ALLOWALL");
   res.setHeader("Content-Security-Policy", "frame-ancestors *");
 
-  // Si tiene embed fijo, úsalo directo sin fetch
+  // Si tiene embed fijo, Ãºsalo directo sin fetch
   if (info.embedFijo) {
     const data = { nombre: info.nombre, ...info.embedFijo };
-    console.log(`[player] ${info.nombre} → ${data.tipo} (${data.fuente}) [FIJO]`);
+    console.log(`[player] ${info.nombre} â ${data.tipo} (${data.fuente}) [FIJO]`);
     if (data.tipo === "m3u8")   return res.send(htmlM3U8(data));
     if (data.tipo === "iframe") return res.send(htmlIframe(data));
   }
 
-  // Si no tiene embedFijo, intentar extracción dinámica con caché
+  // Si no tiene embedFijo, intentar extracciÃ³n dinÃ¡mica con cachÃ©
   let data = getCached("live_" + key);
   if (!data) {
-    console.log(`[player] Extrayendo dinámicamente: ${info.nombre}`);
+    console.log(`[player] Extrayendo dinÃ¡micamente: ${info.nombre}`);
     const r = await extraerStream(info.url);
     if (!r) return res.send(htmlError(info.nombre, info.url));
     data = { nombre: info.nombre, ...r };
     setCache("live_" + key, data);
   }
 
-  console.log(`[player] ${info.nombre} → ${data.tipo} (${data.fuente})`);
+  console.log(`[player] ${info.nombre} â ${data.tipo} (${data.fuente})`);
   if (data.tipo === "m3u8")   return res.send(htmlM3U8(data));
   if (data.tipo === "iframe") return res.send(htmlIframe(data));
 });
@@ -340,14 +340,14 @@ app.post("/live-add", (req, res) => {
   const canalId = id.toLowerCase().replace(/\s+/g, "-");
 
   if (embed) {
-    // Si mandan embed directo, úsalo como embedFijo
+    // Si mandan embed directo, Ãºsalo como embedFijo
     CANALES[canalId] = {
       nombre,
       url: url || embed,
       embedFijo: { tipo: tipo || "iframe", embed, fuente: "manual" }
     };
   } else {
-    // Si solo mandan URL, intentar extracción dinámica
+    // Si solo mandan URL, intentar extracciÃ³n dinÃ¡mica
     CANALES[canalId] = { url: url || "", nombre };
   }
 
@@ -355,7 +355,7 @@ app.post("/live-add", (req, res) => {
     ok: true,
     mensaje: `Canal "${nombre}" agregado`,
     player: `/live/${canalId}/player`,
-    consejo: embed ? "Stream fijo guardado ✓" : "Se extraerá dinámicamente al primer acceso"
+    consejo: embed ? "Stream fijo guardado â" : "Se extraerÃ¡ dinÃ¡micamente al primer acceso"
   });
 });
 
@@ -370,12 +370,12 @@ app.get("/health", (req, res) => {
   });
 });
 
-/* Página principal (index visual) */
+/* PÃ¡gina principal (index visual) */
 app.get("/", (req, res) => {
   const grupos = {
-    "🇪🇨 Ecuador": ["tc","ecuavisa","teleamazonas","rts","canal-uno","gama-tv","ecdf","ecuador-tv"],
-    "🇨🇴 Colombia": ["caracol","rcn"],
-    "🌎 Internacional": ["cnn-espanol","record","antena3"]
+    "ðªð¨ Ecuador": ["tc","ecuavisa","teleamazonas","rts","canal-uno","gama-tv","ecdf","ecuador-tv"],
+    "ð¨ð´ Colombia": ["caracol","rcn"],
+    "ð Internacional": ["cnn-espanol","record","antena3"]
   };
 
   let secciones = "";
@@ -383,7 +383,7 @@ app.get("/", (req, res) => {
     const items = ids.map(k => {
       const v = CANALES[k];
       if (!v) return "";
-      const badge = v.embedFijo ? `<span style="color:#00ff99;font-size:.6rem">● FIJO</span>` : `<span style="color:#ffc800;font-size:.6rem">◌ DIN</span>`;
+      const badge = v.embedFijo ? `<span style="color:#00ff99;font-size:.6rem">â FIJO</span>` : `<span style="color:#ffc800;font-size:.6rem">â DIN</span>`;
       return `<a class="ep" href="/live/${k}/player" target="_blank">
         <span class="badge">GET</span>
         <span class="path">/live/${k}/player</span>
@@ -395,7 +395,7 @@ app.get("/", (req, res) => {
 
   res.send(`<!DOCTYPE html><html lang="es"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>THEY GOOD TV — API v6</title>
+<title>THEY GOOD TV â API v6</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}body{background:#04040f;color:#fff;font-family:'Share Tech Mono',monospace}
@@ -413,12 +413,12 @@ code{color:#00e5ff;background:rgba(0,229,255,.1);padding:2px 6px;border-radius:4
 .path{flex:1;font-size:.78rem}.desc{font-size:.6rem;color:rgba(255,255,255,.4)}
 </style></head><body><div class="wrap">
 <h1>THEY GOOD TV</h1>
-<p class="sub">Stream API · v6.0 · ${Object.keys(CANALES).length} canales</p>
+<p class="sub">Stream API Â· v6.0 Â· ${Object.keys(CANALES).length} canales</p>
 <div class="info">
   En <code>canales.json</code> usa tipo <code>iframe</code> y el link del player:<br>
   <code>"reproductores": ["https://theygoodtv-server.onrender.com/live/ecuavisa/player"]</code><br><br>
-  <span style="color:#00ff99">● FIJO</span> = stream hardcodeado (siempre disponible) &nbsp;|&nbsp; 
-  <span style="color:#ffc800">◌ DIN</span> = extraído dinámicamente
+  <span style="color:#00ff99">â FIJO</span> = stream hardcodeado (siempre disponible) &nbsp;|&nbsp; 
+  <span style="color:#ffc800">â DIN</span> = extraÃ­do dinÃ¡micamente
 </div>
 ${secciones}
 <div class="st">UTILIDADES</div>
@@ -429,7 +429,7 @@ ${secciones}
 
 app.listen(PORT, () => {
   const fijos = Object.values(CANALES).filter(c => c.embedFijo).length;
-  console.log(`\n✅ THEY GOOD TV Server v6.0 — Puerto ${PORT}`);
-  console.log(`📡 ${Object.keys(CANALES).length} canales (${fijos} con stream fijo, ${Object.keys(CANALES).length - fijos} dinámicos)`);
-  console.log(`🌐 Canales: ${Object.keys(CANALES).join(", ")}\n`);
+  console.log(`\nâ THEY GOOD TV Server v6.0 â Puerto ${PORT}`);
+  console.log(`ð¡ ${Object.keys(CANALES).length} canales (${fijos} con stream fijo, ${Object.keys(CANALES).length - fijos} dinÃ¡micos)`);
+  console.log(`ð Canales: ${Object.keys(CANALES).join(", ")}\n`);
 });

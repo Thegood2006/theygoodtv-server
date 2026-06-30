@@ -158,7 +158,17 @@ const CANALES_SERVER = {
 //   con navegador headless (no es viable en Render Free).
 // ═══════════════════════════════════════════════════════
 function resolverCanalSinFijo(canal) {
-  return { embed: canal.url, tipo: "iframe", fuente: "directo" };
+  return { embed: canal.url, tipo: "iframe", fuente: "directo" 
+  "disney": {
+    nombre: "disney",
+    url: "https://moviedays.top/embed-live1.php?v=disneychannel",
+    embedFijo: {
+      tipo: "iframe",
+      embed: "https://moviedays.top/embed-live1.php?v=disneychannel",
+      fuente: "manual"
+    }
+  },
+};
 }
 
 // ═══════════════════════════════════════════════════════

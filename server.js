@@ -150,15 +150,7 @@ const CANALES_SERVER = {
       fuente: "manual"
     }
   },
-  "star": {
-    nombre: "Star Channel",
-    url: "https://moviedays.top/embed-live2.php",
-    embedFijo: {
-      tipo:  "iframe",
-      embed: "https://moviedays.top/embed-live1.php?v=starchannel",
-      fuente: "manual"
-    }
-  },
+
 
 };
 

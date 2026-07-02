@@ -539,7 +539,17 @@ app.get("/live/:id/player", async (req, res) => {
       embedData = {
         embed,
         tipo: embed.includes(".m3u8") ? "m3u8" : "iframe",
-      };
+      
+  "starchanel": {
+    nombre: "star",
+    url: "https://moviedays.top/embed-live1.php?v=starchannel",
+    embedFijo: {
+      tipo: "m3u8",
+      embed: "https://moviedays.top/embed-live1.php?v=starchannel",
+      fuente: "manual"
+    }
+  },
+};
     } catch (e) {
       return res.status(500).send(`<html><body style="background:#000;color:#ff3d5a;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
         ❌ Error extrayendo stream: ${e.message}</body></html>`);

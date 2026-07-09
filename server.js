@@ -1,13 +1,12 @@
 // ═══════════════════════════════════════════════════════
-//   THEY GOOD TV — SERVER v5.0
-//   Render.com · Node 18+ · Express + Puppeteer
+//   THEY GOOD TV — SERVER v5.1
+//   Render.com · Node 18+ · Express (sin Puppeteer)
 // ═══════════════════════════════════════════════════════
 
-const express    = require("express");
-const cors       = require("cors");
-const https      = require("https");
-const http       = require("http");
-const puppeteer  = require("puppeteer");
+const express = require("express");
+const cors    = require("cors");
+const https   = require("https");
+const http    = require("http");
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -17,15 +16,15 @@ app.use(cors());
 app.use(express.json());
 
 // ── URLs base ─────────────────────────────────────────
-const GITHUB_RAW   = "https://raw.githubusercontent.com/Thegood2006/MI-sitio-eventos/main";
-const CANALES_URL  = GITHUB_RAW + "/canales.json";
+const GITHUB_RAW  = "https://raw.githubusercontent.com/Thegood2006/MI-sitio-eventos/main";
+const CANALES_URL = GITHUB_RAW + "/canales.json";
 
 // ═══════════════════════════════════════════════════════
 //   CACHÉ EN MEMORIA · TTL 50 min
 // ═══════════════════════════════════════════════════════
 const CACHE_TTL = 50 * 60 * 1000;
-let cacheCanales  = null;
-let cacheTiempo   = 0;
+let cacheCanales = null;
+let cacheTiempo  = 0;
 
 async function obtenerCanales() {
   if (cacheCanales && Date.now() - cacheTiempo < CACHE_TTL) {
@@ -39,11 +38,9 @@ async function obtenerCanales() {
 
 // ═══════════════════════════════════════════════════════
 //   CANALES CON STREAM FIJO HARDCODED
-//   (los dinámicos se extraen con Puppeteer)
+//   tipo puede ser "m3u8" o "iframe"
 // ═══════════════════════════════════════════════════════
 
-// Estructura: id → { nombre, url, embedFijo: { tipo, embed } }
-// tipo puede ser "m3u8" o "iframe"
 const CANALES_SERVER = {
 
   // ── ECUADOR ──────────────────────────────────────────
@@ -92,7 +89,6 @@ const CANALES_SERVER = {
       fuente: "manual"
     }
   },
-
   "tvc": {
     nombre: "TVC Ecuador",
     url: "https://www.tvc.com.ec/envivo/",
@@ -103,7 +99,7 @@ const CANALES_SERVER = {
     }
   },
 
-  // ── DEPORTES (iFrames dinámicos de moviedays) ─────────
+  // ── DEPORTES (iFrames de moviedays) ───────────────────
   "espn-live": {
     nombre: "ESPN Live",
     url: "https://moviedays.top/embed-live1.php?v=espn",
@@ -142,69 +138,26 @@ const CANALES_SERVER = {
       fuente: "manual"
     }
   },
-
+  "starchanel": {
+    nombre: "Star Channel",
+    url: "https://moviedays.top/embed-live1.php?v=starchannel",
+    embedFijo: {
+      tipo:  "iframe",
+      embed: "https://moviedays.top/embed-live1.php?v=starchannel",
+      fuente: "manual"
+    }
+  },
+  "tc": {
+    nombre: "TC Televisión",
+    url: "tc",
+    embedFijo: {
+      tipo:  "m3u8",
+      embed: "https://cdndirector.dailymotion.com/cdn/live/video/x7wijay.m3u8?sec=Y8K0tZvpDxl3qXdtgkbk9yy9cmkrwWyABOt2lbX7WvoJmKvhcWnu8VDJBCv4dFPdp-iPfTRDDKkr3UcUbTjoAQwaqtxjGA-czN4J9yJBCi0&dmTs=71389&dmV1st=16923b6e-b4e3-1b3f-2b27-5e2f2e41e8ca",
+      fuente: "manual"
+    }
+  },
 
 };
-
-// ═══════════════════════════════════════════════════════
-//   PUPPETEER — caché de streams extraídos
-// ═══════════════════════════════════════════════════════
-const streamCache = {};
-const STREAM_TTL  = 30 * 60 * 1000; // 30 min
-
-async function extraerStreamConPuppeteer(url) {
-  const ahora = Date.now();
-  if (streamCache[url] && ahora - streamCache[url].t < STREAM_TTL) {
-    return streamCache[url].embed;
-  }
-
-  let browser;
-  try {
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--no-first-run",
-        "--no-zygote",
-        "--single-process",
-      ],
-    });
-
-    const page = await browser.newPage();
-    let streamUrl = null;
-
-    // Interceptar peticiones de red buscando m3u8
-    await page.setRequestInterception(true);
-    page.on("request", (req) => {
-      const u = req.url();
-      if (u.includes(".m3u8") && !streamUrl) {
-        streamUrl = u;
-      }
-      req.continue();
-    });
-
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 25000 });
-
-    // Esperar un poco más por si el stream carga tarde
-    await new Promise((r) => setTimeout(r, 5000));
-
-    if (streamUrl) {
-      streamCache[url] = { embed: streamUrl, t: Date.now() };
-      return streamUrl;
-    }
-
-    // Si no encontró m3u8, devolver el iframe original
-    return url;
-  } catch (e) {
-    console.error("Puppeteer error:", e.message);
-    return url; // fallback
-  } finally {
-    if (browser) await browser.close();
-  }
-}
 
 // ═══════════════════════════════════════════════════════
 //   HELPERS
@@ -212,7 +165,7 @@ async function extraerStreamConPuppeteer(url) {
 function fetchJson(url) {
   return new Promise((resolve, reject) => {
     const lib = url.startsWith("https") ? https : http;
-    lib.get(url, { headers: { "User-Agent": "TGTV-Server/5.0" } }, (res) => {
+    lib.get(url, { headers: { "User-Agent": "TGTV-Server/5.1" } }, (res) => {
       let data = "";
       res.on("data", (c) => (data += c));
       res.on("end", () => {
@@ -272,7 +225,7 @@ function playerHTML(canal, embed) {
 }
 
 // ═══════════════════════════════════════════════════════
-//   PÁGINA DE INICIO (index.html bonito del status)
+//   PÁGINA DE INICIO (status)
 // ═══════════════════════════════════════════════════════
 app.get("/", (req, res) => {
   const startTime = process.uptime();
@@ -358,14 +311,13 @@ app.get("/", (req, res) => {
       <div class="log-line"><span class="log-time">--:--:--</span><span class="log-ok">✓ Servidor iniciado en puerto ${PORT}</span></div>
       <div class="log-line"><span class="log-time">--:--:--</span><span class="log-info">→ CORS habilitado para todos los orígenes</span></div>
       <div class="log-line"><span class="log-time">--:--:--</span><span class="log-ok">✓ Caché en memoria activa · TTL: 50 min</span></div>
-      <div class="log-line"><span class="log-time">--:--:--</span><span class="log-ok">✓ Puppeteer listo para extracción dinámica</span></div>
       <div class="log-line"><span class="log-time">--:--:--</span><span class="log-warn">⚠ Plan Free: servidor duerme tras 15 min sin uso</span></div>
     </div>
   </div>
   <div style="text-align:center;margin-bottom:30px">
     <a class="ping-btn" href="/health" target="_blank">📶 VERIFICAR ESTADO</a>
   </div>
-  <div class="footer">THEY GOOD TV API · theygoodtv-server.onrender.com · v5.0.0</div>
+  <div class="footer">THEY GOOD TV API · theygoodtv-server.onrender.com · v5.1.0</div>
 </div>
 </body>
 </html>`);
@@ -379,14 +331,13 @@ app.get("/health", (req, res) => {
     status: "ok",
     uptime: process.uptime(),
     time:   new Date().toISOString(),
-    version: "5.0.0",
+    version: "5.1.0",
     canalesServer: Object.keys(CANALES_SERVER).length,
   });
 });
 
 // ═══════════════════════════════════════════════════════
 //   GET /canales
-//   Devuelve la lista de canales del servidor (para el admin)
 // ═══════════════════════════════════════════════════════
 app.get("/canales", (req, res) => {
   const lista = Object.entries(CANALES_SERVER).map(([id, c]) => ({
@@ -400,14 +351,11 @@ app.get("/canales", (req, res) => {
 
 // ═══════════════════════════════════════════════════════
 //   GET /streams
-//   Devuelve todos los canales del JSON de GitHub
-//   más los del servidor, fusionados
 // ═══════════════════════════════════════════════════════
 app.get("/streams", async (req, res) => {
   try {
     const gh = await obtenerCanales();
 
-    // Aplana todos los canales del JSON
     const categorias = ["futbol","ciclismo","ufc","ecuador","internacional","eventos"];
     const todos = [];
     categorias.forEach((cat) => {
@@ -416,7 +364,6 @@ app.get("/streams", async (req, res) => {
       });
     });
 
-    // Agrega los del servidor que no estén ya
     Object.entries(CANALES_SERVER).forEach(([id, c]) => {
       todos.push({
         id,
@@ -437,14 +384,12 @@ app.get("/streams", async (req, res) => {
 
 // ═══════════════════════════════════════════════════════
 //   GET /canal/:nombre
-//   Devuelve el stream de un canal por nombre (del JSON de GitHub)
 // ═══════════════════════════════════════════════════════
 app.get("/canal/:nombre", async (req, res) => {
   try {
     const gh   = await obtenerCanales();
     const name = req.params.nombre.toLowerCase();
 
-    // Buscar en todas las categorías
     let encontrado = null;
     const cats = ["futbol","ciclismo","ufc","ecuador","internacional","eventos"];
     for (const cat of cats) {
@@ -472,20 +417,18 @@ app.get("/canal/:nombre", async (req, res) => {
 
 // ═══════════════════════════════════════════════════════
 //   GET /live/:id
-//   Devuelve el embed de un canal del servidor en JSON
 // ═══════════════════════════════════════════════════════
 app.get("/live/:id", async (req, res) => {
-  const id     = req.params.id;
-  const canal  = CANALES_SERVER[id];
+  const id    = req.params.id;
+  const canal = CANALES_SERVER[id];
 
   if (!canal) {
     return res.status(404).json({ ok: false, error: "Canal no encontrado: " + id });
   }
 
-  // Si tiene stream fijo, devolverlo directo
   if (canal.embedFijo) {
     return res.json({
-      ok:    true,
+      ok:     true,
       id,
       nombre: canal.nombre,
       embed:  canal.embedFijo.embed,
@@ -494,25 +437,15 @@ app.get("/live/:id", async (req, res) => {
     });
   }
 
-  // Si no, extraer con Puppeteer
-  try {
-    const embed = await extraerStreamConPuppeteer(canal.url);
-    res.json({
-      ok:     true,
-      id,
-      nombre: canal.nombre,
-      embed,
-      tipo:   embed.includes(".m3u8") ? "m3u8" : "iframe",
-      fuente: "puppeteer",
-    });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
+  // Sin stream fijo configurado (no hay extracción dinámica en este servidor)
+  res.status(501).json({
+    ok: false,
+    error: "Este canal no tiene un stream fijo configurado (embedFijo).",
+  });
 });
 
 // ═══════════════════════════════════════════════════════
 //   GET /live/:id/player
-//   Devuelve un HTML listo para embeber en un iframe
 // ═══════════════════════════════════════════════════════
 app.get("/live/:id/player", async (req, res) => {
   const id    = req.params.id;
@@ -523,48 +456,17 @@ app.get("/live/:id/player", async (req, res) => {
       ❌ Canal "${id}" no encontrado</body></html>`);
   }
 
-  let embedData = canal.embedFijo;
-
-  if (!embedData) {
-    try {
-      const embed = await extraerStreamConPuppeteer(canal.url);
-      embedData = {
-        embed,
-        tipo: embed.includes(".m3u8") ? "m3u8" : "iframe",
-      
-  "starchanel": {
-    nombre: "star",
-    url: "https://moviedays.top/embed-live1.php?v=starchannel",
-    embedFijo: {
-      tipo: "m3u8",
-      embed: "https://moviedays.top/embed-live1.php?v=starchannel",
-      fuente: "manual"
-    }
-  },
-
-  "tc": {
-    nombre: "tc",
-    url: "tc",
-    embedFijo: {
-      tipo: "m3u8",
-      embed: "https://cdndirector.dailymotion.com/cdn/live/video/x7wijay.m3u8?sec=Y8K0tZvpDxl3qXdtgkbk9yy9cmkrwWyABOt2lbX7WvoJmKvhcWnu8VDJBCv4dFPdp-iPfTRDDKkr3UcUbTjoAQwaqtxjGA-czN4J9yJBCi0&dmTs=71389&dmV1st=16923b6e-b4e3-1b3f-2b27-5e2f2e41e8ca",
-      fuente: "manual"
-    }
-  },
-};
-    } catch (e) {
-      return res.status(500).send(`<html><body style="background:#000;color:#ff3d5a;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
-        ❌ Error extrayendo stream: ${e.message}</body></html>`);
-    }
+  if (!canal.embedFijo) {
+    return res.status(501).send(`<html><body style="background:#000;color:#ffc800;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-size:1rem;text-align:center;padding:20px;">
+      ⚠ El canal "${canal.nombre}" no tiene un stream fijo configurado.</body></html>`);
   }
 
   res.setHeader("Content-Type", "text/html");
-  res.send(playerHTML(canal, embedData));
+  res.send(playerHTML(canal, canal.embedFijo));
 });
 
 // ═══════════════════════════════════════════════════════
 //   GET /proxy?url=...
-//   Proxy CORS simple para streams m3u8 / recursos
 // ═══════════════════════════════════════════════════════
 app.get("/proxy", (req, res) => {
   const target = req.query.url;
@@ -576,7 +478,7 @@ app.get("/proxy", (req, res) => {
 
   lib.get(target, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; TGTV/5.0)",
+      "User-Agent": "Mozilla/5.0 (compatible; TGTV/5.1)",
       "Origin":     "https://theygoodtv-server.onrender.com",
       "Referer":    "https://theygoodtv-server.onrender.com/",
     },
@@ -599,7 +501,7 @@ app.listen(PORT, () => {
   console.log(`     ██║   ██║   ██║   ██║   ╚██╗ ██╔╝`);
   console.log(`     ██║   ╚██████╔╝   ██║    ╚████╔╝ `);
   console.log(`     ╚═╝    ╚═════╝    ╚═╝     ╚═══╝  \n`);
-  console.log(`  THEY GOOD TV — Server v5.0`);
+  console.log(`  THEY GOOD TV — Server v5.1`);
   console.log(`  Puerto: ${PORT}`);
   console.log(`  Canales hardcoded: ${Object.keys(CANALES_SERVER).length}`);
   console.log(`  Caché TTL: 50 min\n`);

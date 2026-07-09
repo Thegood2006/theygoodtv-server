@@ -1,7 +1,11 @@
 // ═══════════════════════════════════════════════════════
-//   THEY GOOD TV — SERVER v5.2
+//   THEY GOOD TV — SERVER v5.3
 //   Render.com · Node 18+ · Express (sin Puppeteer)
-//   Panel de estado dinámico: lista canales en tiempo real
+//   FIX: caché genérica para canales.json Y contenido.json
+//   FIX: fallback a caché vieja si GitHub responde 429
+//   FIX: endpoints /raw/canales y /raw/contenido para que
+//        admin.html e index.html YA NO le peguen directo
+//        a raw.githubusercontent.com (eso causaba los 429)
 // ═══════════════════════════════════════════════════════
 
 const express = require("express");
@@ -12,39 +16,85 @@ const http    = require("http");
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-// ── CORS abierto ──────────────────────────────────────
 app.use(cors());
 app.use(express.json());
 
 // ── URLs base ─────────────────────────────────────────
-const GITHUB_RAW  = "https://raw.githubusercontent.com/Thegood2006/MI-sitio-eventos/main";
-const CANALES_URL = GITHUB_RAW + "/canales.json";
+const GITHUB_RAW    = "https://raw.githubusercontent.com/Thegood2006/MI-sitio-eventos/main";
+const CANALES_URL   = GITHUB_RAW + "/canales.json";
+const CONTENIDO_URL = GITHUB_RAW + "/contenido.json";
 
 // ═══════════════════════════════════════════════════════
-//   CACHÉ EN MEMORIA · TTL 50 min
+//   CACHÉ EN MEMORIA GENÉRICA · TTL 50 min
+//   FIX: si GitHub falla (429, timeout, etc), NO se rompe:
+//   se devuelve la última copia buena que se tenga guardada,
+//   aunque esté vencida. Solo falla si nunca se pudo cargar.
 // ═══════════════════════════════════════════════════════
 const CACHE_TTL = 50 * 60 * 1000;
-let cacheCanales = null;
-let cacheTiempo  = 0;
+const cacheStore = {
+  canales:   { data: null, time: 0 },
+  contenido: { data: null, time: 0 },
+};
 
-async function obtenerCanales() {
-  if (cacheCanales && Date.now() - cacheTiempo < CACHE_TTL) {
-    return cacheCanales;
-  }
-  const data = await fetchJson(CANALES_URL);
-  cacheCanales = data;
-  cacheTiempo  = Date.now();
-  return data;
+function fetchJson(url) {
+  return new Promise((resolve, reject) => {
+    const lib = url.startsWith("https") ? https : http;
+    lib.get(url, { headers: { "User-Agent": "TGTV-Server/5.3" } }, (res) => {
+      // FIX: si GitHub responde 429 / 5xx, no intentes parsear el
+      // cuerpo como JSON (era HTML/texto y rompía todo con
+      // "Unexpected non-whitespace character after JSON").
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        res.resume(); // descarta el cuerpo
+        return reject(new Error("HTTP " + res.statusCode + " al pedir " + url));
+      }
+      let data = "";
+      res.on("data", (c) => (data += c));
+      res.on("end", () => {
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(new Error("JSON parse error en " + url + ": " + e.message)); }
+      });
+    }).on("error", reject);
+  });
 }
+
+// Espera ms milisegundos
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+// Obtiene un JSON con caché + reintento + fallback a caché vieja
+async function obtenerConCache(key, url) {
+  const entry = cacheStore[key];
+  const fresco = entry.data && (Date.now() - entry.time < CACHE_TTL);
+  if (fresco) return entry.data;
+
+  // Intenta refrescar (con 1 reintento si es 429)
+  for (let intento = 0; intento < 2; intento++) {
+    try {
+      const data = await fetchJson(url);
+      cacheStore[key] = { data, time: Date.now() };
+      return data;
+    } catch (e) {
+      const es429 = /HTTP 429/.test(e.message);
+      if (es429 && intento === 0) {
+        await sleep(1500); // pequeña espera antes de reintentar
+        continue;
+      }
+      // Si hay una copia vieja en caché, mejor devolver eso que romper
+      if (entry.data) {
+        console.warn(`⚠️ ${key}: fallo al refrescar (${e.message}), usando caché vieja.`);
+        return entry.data;
+      }
+      throw e; // no hay nada guardado, no queda otra que fallar
+    }
+  }
+}
+
+async function obtenerCanales()   { return obtenerConCache("canales", CANALES_URL); }
+async function obtenerContenido() { return obtenerConCache("contenido", CONTENIDO_URL); }
 
 // ═══════════════════════════════════════════════════════
 //   CANALES CON STREAM FIJO HARDCODED
-//   tipo puede ser "m3u8" o "iframe"
 // ═══════════════════════════════════════════════════════
-
 const CANALES_SERVER = {
-
-  // ── ECUADOR ──────────────────────────────────────────
   "teleamazonas": {
     nombre: "Teleamazonas",
     url: "https://teleamazonas.com/envivo",
@@ -99,8 +149,6 @@ const CANALES_SERVER = {
       fuente: "manual"
     }
   },
-
-  // ── DEPORTES (iFrames de moviedays) ───────────────────
   "espn-live": {
     nombre: "ESPN Live",
     url: "https://moviedays.top/embed-live1.php?v=espn",
@@ -128,8 +176,6 @@ const CANALES_SERVER = {
       fuente: "manual"
     }
   },
-
-  // ── ENTRETENIMIENTO ───────────────────────────────────
   "disney": {
     nombre: "Disney Channel",
     url: "https://moviedays.top/embed-live3.php",
@@ -157,27 +203,11 @@ const CANALES_SERVER = {
       fuente: "manual"
     }
   },
-
 };
 
 // ═══════════════════════════════════════════════════════
-//   HELPERS
+//   HELPERS DE REPRODUCTOR
 // ═══════════════════════════════════════════════════════
-function fetchJson(url) {
-  return new Promise((resolve, reject) => {
-    const lib = url.startsWith("https") ? https : http;
-    lib.get(url, { headers: { "User-Agent": "TGTV-Server/5.2" } }, (res) => {
-      let data = "";
-      res.on("data", (c) => (data += c));
-      res.on("end", () => {
-        try { resolve(JSON.parse(data)); }
-        catch (e) { reject(new Error("JSON parse error: " + e.message)); }
-      });
-    }).on("error", reject);
-  });
-}
-
-// Genera el HTML del reproductor embebido
 function playerHTML(canal, embed) {
   const tipo = embed.tipo || "m3u8";
   let playerInner = "";
@@ -192,7 +222,6 @@ function playerHTML(canal, embed) {
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
       ></iframe>`;
   } else {
-    // m3u8 → HLS.js
     playerInner = `
       <video id="vid" autoplay controls playsinline
         style="width:100%;height:100%;background:#000;display:block;"></video>
@@ -226,7 +255,7 @@ function playerHTML(canal, embed) {
 }
 
 // ═══════════════════════════════════════════════════════
-//   PÁGINA DE INICIO (panel dinámico)
+//   PÁGINA DE INICIO (panel dinámico) — sin cambios de fondo
 // ═══════════════════════════════════════════════════════
 app.get("/", (req, res) => {
   const startTime = process.uptime();
@@ -256,10 +285,8 @@ app.get("/", (req, res) => {
   .status-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.3);color:var(--green);border-radius:30px;padding:8px 20px;font-size:0.75rem;letter-spacing:2px;margin-top:20px;transition:.3s}
   .status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:blink 1.5s ease-in-out infinite}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
-
   .explainer{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--cyan);border-radius:8px;padding:18px 20px;margin-bottom:28px;font-size:0.82rem;line-height:1.7;color:rgba(255,255,255,0.72)}
   .explainer b{color:#fff}
-
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:28px}
   .card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px;transition:.3s}
   .card:hover{border-color:rgba(0,229,255,0.4);transform:translateY(-3px)}
@@ -267,20 +294,16 @@ app.get("/", (req, res) => {
   .card-label{font-size:0.6rem;letter-spacing:3px;color:var(--cyan);text-transform:uppercase;margin-bottom:6px}
   .card-value{font-family:'Orbitron',sans-serif;font-size:1.4rem;font-weight:700;color:#fff}
   .card-sub{font-size:0.65rem;color:rgba(255,255,255,0.3);margin-top:4px}
-
   .section-title{font-family:'Orbitron',sans-serif;font-size:0.8rem;color:var(--cyan);letter-spacing:3px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
   .section-title::after{content:'';flex:1;height:1px;background:var(--border)}
   .section-help{font-size:0.7rem;color:rgba(255,255,255,0.35);margin-bottom:16px}
-
   .search-box input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:#fff;font-family:'Share Tech Mono',monospace;font-size:0.85rem;margin-bottom:14px;outline:none;transition:.2s}
   .search-box input:focus{border-color:var(--cyan)}
   .search-box input::placeholder{color:rgba(255,255,255,0.25)}
-
   .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
   .chip{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:7px 16px;font-size:0.68rem;letter-spacing:0.5px;cursor:pointer;color:rgba(255,255,255,0.55);transition:.2s;user-select:none}
   .chip:hover{border-color:rgba(0,229,255,0.4);color:#fff}
   .chip.active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,0.08)}
-
   .channels-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-bottom:30px}
   .channel-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;transition:.2s}
   .channel-card:hover{border-color:rgba(0,229,255,0.4);transform:translateY(-2px)}
@@ -290,16 +313,13 @@ app.get("/", (req, res) => {
   a.ch-btn{margin-top:auto;text-align:center;background:rgba(0,229,255,0.1);border:1px solid rgba(0,229,255,0.3);border-radius:8px;padding:9px;color:var(--cyan);text-decoration:none;font-size:0.68rem;letter-spacing:1px;transition:.2s}
   a.ch-btn:hover{background:rgba(0,229,255,0.2)}
   .empty-state{grid-column:1/-1;text-align:center;padding:50px 20px;color:rgba(255,255,255,0.35);font-size:0.8rem;line-height:1.8}
-
   .endpoint-list{display:flex;flex-direction:column;gap:10px;margin-bottom:30px}
   .endpoint{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;transition:.2s;cursor:pointer;text-decoration:none;color:inherit}
   .endpoint:hover{border-color:rgba(0,229,255,0.4)}
   .method{font-family:'Orbitron',sans-serif;font-size:0.6rem;font-weight:700;padding:4px 10px;border-radius:6px;flex-shrink:0;letter-spacing:1px;background:rgba(0,229,255,0.15);border:1px solid rgba(0,229,255,0.4);color:var(--cyan)}
   .ep-path{font-family:'Share Tech Mono',monospace;font-size:0.85rem;color:#fff;flex-shrink:0}
   .ep-desc{font-size:0.68rem;color:rgba(255,255,255,0.45);text-align:right;flex:1}
-
   .footer{text-align:center;padding:40px 0 20px;color:rgba(255,255,255,0.2);font-size:0.65rem;letter-spacing:2px}
-
   @media (max-width:560px){
     .endpoint{flex-wrap:wrap}
     .ep-desc{text-align:left;flex-basis:100%}
@@ -314,14 +334,14 @@ app.get("/", (req, res) => {
   <div class="status-badge" id="statusBadge"><span class="status-dot"></span> SERVIDOR ACTIVO</div>
 </header>
 <div class="wrap">
-
   <div class="explainer">
     <b>¿Qué es esto?</b> Este servidor le entrega canales de TV en vivo a la app THEY GOOD TV.
     Tiene dos fuentes: unos <b>canales fijos</b> escritos directo en el código (${Object.keys(CANALES_SERVER).length} en total,
-    abajo dice cuáles) y una lista más grande que viene de un archivo <code>canales.json</code> guardado en GitHub,
-    organizada por categoría (fútbol, ciclismo, UFC, etc). Esa lista se guarda en memoria por 50 minutos para no pedirla
-    todo el tiempo a GitHub. Como usa el plan gratis de Render, <b>el servidor se apaga solo tras 15 min sin visitas</b>
-    y tarda unos segundos en despertar la próxima vez que alguien entra.
+    abajo dice cuáles) y una lista más grande que viene de archivos <code>canales.json</code> y
+    <code>contenido.json</code> guardados en GitHub. Esos archivos se guardan en memoria por 50 minutos
+    para no pedirlos todo el tiempo a GitHub y evitar el límite de peticiones (error 429). Como usa el
+    plan gratis de Render, <b>el servidor se apaga solo tras 15 min sin visitas</b> y tarda unos segundos
+    en despertar la próxima vez que alguien entra.
   </div>
 
   <div class="grid">
@@ -347,7 +367,6 @@ app.get("/", (req, res) => {
 
   <div class="section-title">CANALES</div>
   <div class="section-help">Esta lista se carga en vivo desde tu propio servidor (/streams). Busca o filtra por categoría.</div>
-
   <div class="search-box">
     <input type="text" id="buscador" placeholder="Buscar canal por nombre...">
   </div>
@@ -367,6 +386,14 @@ app.get("/", (req, res) => {
       <span class="method">GET</span><span class="ep-path">/canales</span>
       <span class="ep-desc">Solo los canales fijos escritos en el código del servidor</span>
     </a>
+    <a class="endpoint" href="/raw/canales" target="_blank">
+      <span class="method">GET</span><span class="ep-path">/raw/canales</span>
+      <span class="ep-desc">canales.json tal cual está en GitHub, pero cacheado (evita 429)</span>
+    </a>
+    <a class="endpoint" href="/raw/contenido" target="_blank">
+      <span class="method">GET</span><span class="ep-path">/raw/contenido</span>
+      <span class="ep-desc">contenido.json tal cual está en GitHub, pero cacheado (evita 429)</span>
+    </a>
     <a class="endpoint" href="/canal/dw-espanol" target="_blank">
       <span class="method">GET</span><span class="ep-path">/canal/:nombre</span>
       <span class="ep-desc">Busca un canal de GitHub por su nombre (en minúsculas, con guiones)</span>
@@ -381,7 +408,7 @@ app.get("/", (req, res) => {
     </a>
   </div>
 
-  <div class="footer">THEY GOOD TV API · theygoodtv-server.onrender.com · v5.2.0</div>
+  <div class="footer">THEY GOOD TV API · theygoodtv-server.onrender.com · v5.3.0</div>
 </div>
 
 <script>
@@ -395,7 +422,6 @@ app.get("/", (req, res) => {
     ecuador: 'Ecuador', internacional: 'Internacional',
     eventos: 'Eventos', servidor: 'Canal fijo del servidor'
   };
-
   let TODOS = [];
   let filtroActual = 'todos';
 
@@ -457,7 +483,6 @@ app.get("/", (req, res) => {
     let lista = TODOS;
     if (filtroActual !== 'todos') lista = lista.filter(c => c.categoria === filtroActual);
     if (q) lista = lista.filter(c => (c.nombre || '').toLowerCase().includes(q));
-
     const cont = document.getElementById('channelsGrid');
     if (!lista.length) {
       cont.innerHTML = '<div class="empty-state">No hay canales que coincidan con esa búsqueda o filtro.</div>';
@@ -477,7 +502,6 @@ app.get("/", (req, res) => {
   }
 
   document.getElementById('buscador').addEventListener('input', pintarCanales);
-
   actualizarSalud();
   cargarCanales();
   setInterval(actualizarSalud, 30000);
@@ -495,7 +519,7 @@ app.get("/health", (req, res) => {
     status: "ok",
     uptime: process.uptime(),
     time:   new Date().toISOString(),
-    version: "5.2.0",
+    version: "5.3.0",
     canalesServer: Object.keys(CANALES_SERVER).length,
   });
 });
@@ -514,12 +538,37 @@ app.get("/canales", (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════
+//   GET /raw/canales  y  GET /raw/contenido
+//   FIX PRINCIPAL: estos endpoints son los que admin.html
+//   (y luego index.html) deben usar EN VEZ de pegarle
+//   directo a raw.githubusercontent.com. El server cachea
+//   por 50 min y si GitHub responde 429 devuelve la copia
+//   vieja en vez de romperse.
+// ═══════════════════════════════════════════════════════
+app.get("/raw/canales", async (req, res) => {
+  try {
+    const data = await obtenerCanales();
+    res.json(data);
+  } catch (e) {
+    res.status(502).json({ ok: false, error: "No se pudo obtener canales.json: " + e.message });
+  }
+});
+
+app.get("/raw/contenido", async (req, res) => {
+  try {
+    const data = await obtenerContenido();
+    res.json(data);
+  } catch (e) {
+    res.status(502).json({ ok: false, error: "No se pudo obtener contenido.json: " + e.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════
 //   GET /streams
 // ═══════════════════════════════════════════════════════
 app.get("/streams", async (req, res) => {
   try {
     const gh = await obtenerCanales();
-
     const categorias = ["futbol","ciclismo","ufc","ecuador","internacional","eventos"];
     const todos = [];
     categorias.forEach((cat) => {
@@ -527,7 +576,6 @@ app.get("/streams", async (req, res) => {
         todos.push({ ...c, categoria: cat });
       });
     });
-
     Object.entries(CANALES_SERVER).forEach(([id, c]) => {
       todos.push({
         id,
@@ -539,7 +587,6 @@ app.get("/streams", async (req, res) => {
           : [req.protocol + "://" + req.get("host") + "/live/" + id + "/player"],
       });
     });
-
     res.json({ ok: true, total: todos.length, canales: todos });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -553,7 +600,6 @@ app.get("/canal/:nombre", async (req, res) => {
   try {
     const gh   = await obtenerCanales();
     const name = req.params.nombre.toLowerCase();
-
     let encontrado = null;
     const cats = ["futbol","ciclismo","ufc","ecuador","internacional","eventos"];
     for (const cat of cats) {
@@ -563,11 +609,9 @@ app.get("/canal/:nombre", async (req, res) => {
       );
       if (encontrado) break;
     }
-
     if (!encontrado) {
       return res.status(404).json({ ok: false, error: "Canal no encontrado" });
     }
-
     res.json({
       ok:    true,
       canal: encontrado.nombre,
@@ -585,11 +629,9 @@ app.get("/canal/:nombre", async (req, res) => {
 app.get("/live/:id", async (req, res) => {
   const id    = req.params.id;
   const canal = CANALES_SERVER[id];
-
   if (!canal) {
     return res.status(404).json({ ok: false, error: "Canal no encontrado: " + id });
   }
-
   if (canal.embedFijo) {
     return res.json({
       ok:     true,
@@ -600,8 +642,6 @@ app.get("/live/:id", async (req, res) => {
       fuente: canal.embedFijo.fuente || "manual",
     });
   }
-
-  // Sin stream fijo configurado (no hay extracción dinámica en este servidor)
   res.status(501).json({
     ok: false,
     error: "Este canal no tiene un stream fijo configurado (embedFijo).",
@@ -614,17 +654,14 @@ app.get("/live/:id", async (req, res) => {
 app.get("/live/:id/player", async (req, res) => {
   const id    = req.params.id;
   const canal = CANALES_SERVER[id];
-
   if (!canal) {
     return res.status(404).send(`<html><body style="background:#000;color:#ff3d5a;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-size:1.2rem;">
       ❌ Canal "${id}" no encontrado</body></html>`);
   }
-
   if (!canal.embedFijo) {
     return res.status(501).send(`<html><body style="background:#000;color:#ffc800;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-size:1rem;text-align:center;padding:20px;">
       ⚠ El canal "${canal.nombre}" no tiene un stream fijo configurado.</body></html>`);
   }
-
   res.setHeader("Content-Type", "text/html");
   res.send(playerHTML(canal, canal.embedFijo));
 });
@@ -637,12 +674,10 @@ app.get("/proxy", (req, res) => {
   if (!target) {
     return res.status(400).json({ ok: false, error: "Falta parámetro url" });
   }
-
   const lib = target.startsWith("https") ? https : http;
-
   lib.get(target, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; TGTV/5.2)",
+      "User-Agent": "Mozilla/5.0 (compatible; TGTV/5.3)",
       "Origin":     "https://theygoodtv-server.onrender.com",
       "Referer":    "https://theygoodtv-server.onrender.com/",
     },
@@ -665,8 +700,8 @@ app.listen(PORT, () => {
   console.log(`     ██║   ██║   ██║   ██║   ╚██╗ ██╔╝`);
   console.log(`     ██║   ╚██████╔╝   ██║    ╚████╔╝ `);
   console.log(`     ╚═╝    ╚═════╝    ╚═╝     ╚═══╝  \n`);
-  console.log(`  THEY GOOD TV — Server v5.2`);
+  console.log(`  THEY GOOD TV — Server v5.3`);
   console.log(`  Puerto: ${PORT}`);
   console.log(`  Canales hardcoded: ${Object.keys(CANALES_SERVER).length}`);
-  console.log(`  Caché TTL: 50 min\n`);
+  console.log(`  Caché TTL: 50 min (canales.json y contenido.json)\n`);
 });

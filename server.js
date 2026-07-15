@@ -158,15 +158,7 @@ const CANALES_SERVER = {
       fuente: "manual"
     }
   },
-  "deportes-1": {
-    nombre: "Deportes Canal 1",
-    url: "https://moviedays.top/embed-live2.php",
-    embedFijo: {
-      tipo:  "iframe",
-      embed: "https://moviedays.top/embed-live2.php",
-      fuente: "manual"
-    }
-  },
+
   "deportes-2": {
     nombre: "Deportes Canal 2",
     url: "https://moviedays.top/embed-live3.php",

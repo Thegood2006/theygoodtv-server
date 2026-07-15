@@ -149,15 +149,6 @@ const CANALES_SERVER = {
       fuente: "manual"
     }
   },
-  "espn-live": {
-    nombre: "ESPN Live",
-    url: "https://moviedays.top/embed-live1.php?v=espn",
-    embedFijo: {
-      tipo:  "iframe",
-      embed: "https://moviedays.top/embed-live1.php?v=espn",
-      fuente: "manual"
-    }
-  },
 
 };
 

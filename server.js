@@ -359,7 +359,18 @@ app.get("/", (req, res) => {
     futbol: 'Fútbol', ciclismo: 'Ciclismo', ufc: 'UFC',
     ecuador: 'Ecuador', internacional: 'Internacional',
     eventos: 'Eventos', servidor: 'Canal fijo del servidor'
-  };
+  
+  "tvc": {
+    nombre: "tvc",
+    url: "tvc",
+    embedFijo: {
+      tipo: "m3u8",
+      embed: "https://d2m7i0pvomh4vg.cloudfront.net/medialist_15609871089997455276_hls.m3u8",
+      embeds: ["https://d2m7i0pvomh4vg.cloudfront.net/medialist_15609871089997455276_hls.m3u8", "https://d2m7i0pvomh4vg.cloudfront.net/ts:abr.m3u8"],
+      fuente: "manual"
+    }
+  },
+};
   let TODOS = [];
   let filtroActual = 'todos';
 

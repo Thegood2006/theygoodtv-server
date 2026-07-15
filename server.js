@@ -169,15 +169,6 @@ const CANALES_SERVER = {
     }
   },
 
-  "tc": {
-    nombre: "TC Televisión",
-    url: "tc",
-    embedFijo: {
-      tipo:  "m3u8",
-      embed: "https://cdndirector.dailymotion.com/cdn/live/video/x7wijay.m3u8?sec=Y8K0tZvpDxl3qXdtgkbk9yy9cmkrwWyABOt2lbX7WvoJmKvhcWnu8VDJBCv4dFPdp-iPfTRDDKkr3UcUbTjoAQwaqtxjGA-czN4J9yJBCi0&dmTs=71389&dmV1st=16923b6e-b4e3-1b3f-2b27-5e2f2e41e8ca",
-      fuente: "manual"
-    }
-  },
 };
 
 // ═══════════════════════════════════════════════════════

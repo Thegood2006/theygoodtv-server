@@ -101,6 +101,7 @@ const CANALES_SERVER = {
     embedFijo: {
       tipo:  "m3u8",
       embed: "https://teleamazonas-live.cdn.vustreams.com/live/fd4ab346-b4e3-4628-abf0-b5a1bc192428/live.isml/fd4ab346-b4e3-4628-abf0-b5a1bc192428.m3u8",
+      embeds: ["https://teleamazonas-live.cdn.vustreams.com/live/fd4ab346-b4e3-4628-abf0-b5a1bc192428/live.isml/fd4ab346-b4e3-4628-abf0-b5a1bc192428.m3u8"],
       fuente: "manual"
     }
   },
@@ -110,6 +111,7 @@ const CANALES_SERVER = {
     embedFijo: {
       tipo:  "m3u8",
       embed: "https://dwamdstream104.akamaized.net/hls/live/2015530/dwstream104/index.m3u8",
+      embeds: ["https://dwamdstream104.akamaized.net/hls/live/2015530/dwstream104/index.m3u8"],
       fuente: "manual"
     }
   },
@@ -119,6 +121,7 @@ const CANALES_SERVER = {
     embedFijo: {
       tipo:  "m3u8",
       embed: "https://rakuten-euronews-1-es.samsung.wurl.tv/manifest/playlist.m3u8",
+      embeds: ["https://rakuten-euronews-1-es.samsung.wurl.tv/manifest/playlist.m3u8"],
       fuente: "manual"
     }
   },
@@ -128,6 +131,7 @@ const CANALES_SERVER = {
     embedFijo: {
       tipo:  "m3u8",
       embed: "https://video.makrodigital.com/americaestereoguayaquil/americaestereoguayaquil/playlist.m3u8",
+      embeds: ["https://video.makrodigital.com/americaestereoguayaquil/americaestereoguayaquil/playlist.m3u8"],
       fuente: "manual"
     }
   },
@@ -137,6 +141,7 @@ const CANALES_SERVER = {
     embedFijo: {
       tipo:  "m3u8",
       embed: "https://video2.makrodigital.com/zaracay/zaracay/playlist.m3u8",
+      embeds: ["https://video2.makrodigital.com/zaracay/zaracay/playlist.m3u8"],
       fuente: "manual"
     }
   },

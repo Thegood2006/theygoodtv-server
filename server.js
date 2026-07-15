@@ -140,15 +140,6 @@ const CANALES_SERVER = {
       fuente: "manual"
     }
   },
-  "tvc": {
-    nombre: "TVC Ecuador",
-    url: "https://www.tvc.com.ec/envivo/",
-    embedFijo: {
-      tipo:  "iframe",
-      embed: "https://www.tvc.com.ec/envivo/",
-      fuente: "manual"
-    }
-  },
 
 };
 

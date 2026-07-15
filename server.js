@@ -159,16 +159,6 @@ const CANALES_SERVER = {
     }
   },
 
-  "disney": {
-    nombre: "Disney Channel",
-    url: "https://moviedays.top/embed-live3.php",
-    embedFijo: {
-      tipo:  "iframe",
-      embed: "https://moviedays.top/embed-live3.php",
-      fuente: "manual"
-    }
-  },
-
 };
 
 // ═══════════════════════════════════════════════════════

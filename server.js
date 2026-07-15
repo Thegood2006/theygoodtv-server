@@ -168,15 +168,7 @@ const CANALES_SERVER = {
       fuente: "manual"
     }
   },
-  "starchanel": {
-    nombre: "Star Channel",
-    url: "https://moviedays.top/embed-live1.php?v=starchannel",
-    embedFijo: {
-      tipo:  "iframe",
-      embed: "https://moviedays.top/embed-live1.php?v=starchannel",
-      fuente: "manual"
-    }
-  },
+
   "tc": {
     nombre: "TC Televisión",
     url: "tc",
